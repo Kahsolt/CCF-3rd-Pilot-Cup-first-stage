@@ -8,9 +8,17 @@
 队名: 我吃两个  
 
 
+### install
+
+- `pip install pyvqnet --index-url https://pypi.originqc.com.cn`
+
 ### references
 
 - Tiny-Q: [https://github.com/Kahsolt/Tiny-Q](https://github.com/Kahsolt/Tiny-Q)
+- W state in multi-qubit systems: [https://github.com/qiskit-community/qiskit-community-tutorials/blob/master/awards/teach_me_qiskit_2018/w_state/W%20State%201%20-%20Multi-Qubit%20Systems.ipynb](https://github.com/qiskit-community/qiskit-community-tutorials/blob/master/awards/teach_me_qiskit_2018/w_state/W%20State%201%20-%20Multi-Qubit%20Systems.ipynb)
+- (2018) Efficient quantum algorithms for GHZ and W states: [https://arxiv.org/abs/1807.05572](https://arxiv.org/abs/1807.05572)
+- (2020) Three qubits can be entangled in two inequivalent ways: [https://arxiv.org/abs/quant-ph/0005115](https://arxiv.org/abs/quant-ph/0005115)
+- (2022) Deterministic construction of arbitrary W states with quadratically increasing number of two-qubit gates: [https://arxiv.org/abs/1606.09290](https://arxiv.org/abs/1606.09290)
 
 ----
 
