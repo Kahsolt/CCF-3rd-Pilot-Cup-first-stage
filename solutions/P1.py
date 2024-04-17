@@ -17,6 +17,10 @@ DEBUG = False
 BASE_PATH = Path(__file__).parent
 CKPT_PATH = BASE_PATH / 'ckpt' ; CKPT_PATH.mkdir(exist_ok=True)
 
+n_qubits_cases = [3, 4, 5, 6, 8, 10]
+mean = lambda x: sum(x) / len(x) if len(x) else 0.0
+round_list = lambda ls: [round(e, 7) for e in ls]
+
 if 'vqi':
   import pyvqnet as vq
   # data
@@ -381,6 +385,81 @@ class WState_VQC(Model):
   def __str__(self) -> str:
     return super().__str__() + f'_Q={self.n_qubits}'
 
+class WState_diogo_VQCx(WState_VQC):
+
+  ''' parametrizing per-theta in WState_diogo
+  The basic block in essay https://arxiv.org/abs/1807.05572 can be drawn as:
+            CNOT     revCNOT
+  |1>---------o----------x---
+              |          |
+  |0>--RY(θ)--x--RY(-θ)--o---
+      Controlled-G(p)  rCNOT
+  '''
+
+  def __init__(self, n_qubits:int):
+    super().__init__(n_qubits)
+
+    self.thetas = Parameter(shape=[n_qubits-1], initializer=quantum_uniform, dtype=kfloat32)
+
+  def block(self, i:int, j:int):
+    vqm = self.vqm
+    ry(vqm, wires=j, params=self.thetas[i:i+1])
+    cnot(vqm, wires=[i, j])
+    ry(vqm, wires=j, params=-self.thetas[i:i+1])
+    cnot(vqm, wires=[j, i])
+
+  def forward(self):
+    vqm = self.vqm
+    paulix(vqm, wires=0)
+    for i in range(self.n_qubits - 1):
+      self.block(i, i + 1)
+
+class WState_diogo_VQCy(WState_VQC):
+
+  ''' parametrizing per-theta in WState_diogo (symmetrical version)
+  |1>----o----RY(θ')---
+         |      |
+  |0>---RY(θ)---o------
+  '''
+
+  def __init__(self, n_qubits:int):
+    super().__init__(n_qubits)
+
+    # 学出来 thetas2 全都接近 pi，说明就应该是 CNOT 门，WState_diogo_VQCx 完全合理
+    self.thetas1 = Parameter(shape=[n_qubits-1], initializer=quantum_uniform, dtype=kfloat32)
+    self.thetas2 = Parameter(shape=[n_qubits-1], initializer=quantum_uniform, dtype=kfloat32)
+
+  def block(self, i:int, j:int):
+    vqm = self.vqm
+    cry(vqm, wires=[i, j], params=self.thetas1[i:i+1])
+    cry(vqm, wires=[j, i], params=self.thetas2[i:i+1])
+
+  def forward(self):
+    vqm = self.vqm
+    paulix(vqm, wires=0)
+    for i in range(self.n_qubits - 1):
+      self.block(i, i + 1)
+
+class WState_diogo_VQC1(WState_VQC):
+
+  ''' parametrizing per-gate in WState_diogo '''
+
+  def __init__(self, n_qubits:int):
+    super().__init__(n_qubits)
+
+    self.cry = ModuleList(CRY(wires=[i, i+1]) for i in range(n_qubits - 1))
+
+  def block(self, i:int, j:int):
+    vqm = self.vqm
+    self.cry[i](q_machine=vqm)    # Controlled-G(p) = CU3 = RY-CNOT-RY = CRY
+    cnot(vqm, wires=[j, i])
+
+  def forward(self):
+    vqm = self.vqm
+    paulix(vqm, wires=0)
+    for i in range(self.n_qubits - 1):
+      self.block(i, i + 1)
+
 class WState_qiskit_VQC0(WState_VQC):
 
   ''' parametrizing per-theta in WState_qiskit '''
@@ -543,7 +622,7 @@ def get_model(
     if DEBUG and steps % 200 == 0:
       ema_loss = (0.4 * ema_loss + 0.6 * loss.item()) if ema_loss is not None else loss.item()
       print(f'[Epoch {steps}/{n_iter}] kl_div: {kl:.5f}, l1_loss: {MAE(pdist, qdist):.5g}, ema(loss): {ema_loss:.5g}')
-    if kl < 1e-8: break   # converge early
+    if kl < 1e-9: break   # converge early
   model.eval()
 
   ''' save '''
@@ -558,7 +637,7 @@ def question1(n_qubits:int) -> ProbDict:
   ''' Special case for n_qubits = 4 '''
   assert n_qubits == 4
 
-  method = 'WState_qiskit_VQC0'
+  method = 'WState_diogo_VQC1'
   depth = -1
 
   model = get_model(method, n_qubits, depth)
@@ -568,7 +647,7 @@ def question1(n_qubits:int) -> ProbDict:
 def question2(n_qubits:int) -> ProbDict:
   ''' Arbitary case for n_qubits '''
 
-  method = 'WState_qiskit_VQC0'
+  method = 'WState_diogo_VQC1'
   depth = -1
 
   model = get_model(method, n_qubits, depth)
@@ -594,12 +673,12 @@ def pretrain(n_qubits:int):
   DEBUG = True
 
   # TODO: tune these to find the optimal setting
-  method = 'WState_qiskit_VQC0'
+  method = 'WState_diogo_VQCy'
   depth = 1
   n_iter = 10000
   loss = 'l2'
   optim = 'SGD'
-  lr = 0.2
+  lr = 0.2 * n_qubits**2   # 梯度随量子位增加而急剧减小，需要加♂大♂力♂度♂
   seed = 114514
 
   model = get_model(method, n_qubits, depth, n_iter, loss, optim, lr, seed=seed)
@@ -612,7 +691,6 @@ def benchmark(n_qubits_cases:List[int], train_if_no_exist:bool=False):
   DEBUG = False
 
   TRUTHS = { n_qubits: get_truth(n_qubits) for n_qubits in n_qubits_cases }
-  mean = lambda x: sum(x) / len(x) if len(x) else 0.0
 
   def run_depth_group(depth:int, methods:List[str]):
     print('=' * 32 + f' [D={depth}] ' + '=' * 32)
@@ -627,11 +705,13 @@ def benchmark(n_qubits_cases:List[int], train_if_no_exist:bool=False):
         else:
           err = float('inf')
         error_list.append(err)
-      print(f'[{method}] {mean(error_list):.5f} | {[round(e, 4) for e in error_list]}')
+      print(f'[{method}] {mean(error_list):.5f} | {round_list(error_list)}')
     print()
 
   FIX_DEPTH_METHODS = [
     'WState_diogo',
+    'WState_diogo_VQCx',
+    'WState_diogo_VQC1',
     'WState_qiskit',
     'WState_qiskit_VQC0',
     'WState_qiskit_VQC1',
@@ -652,7 +732,6 @@ def benchmark(n_qubits_cases:List[int], train_if_no_exist:bool=False):
 
 
 if __name__ == '__main__':
-  n_qubits_cases = [3, 4, 5, 6, 8, 10]
   for n_qubits in n_qubits_cases:
     pretrain(n_qubits)
   benchmark(n_qubits_cases, train_if_no_exist=False)
