@@ -1,4 +1,4 @@
-# CCF 3nd-Pilot-Cup first-stage
+# CCF 3rd-Pilot-Cup first-stage
 
     第三届CCF“司南杯”量子计算编程挑战赛-通用赛道 初赛
 
