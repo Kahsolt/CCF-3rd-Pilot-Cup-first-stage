@@ -19,6 +19,8 @@
 - (2018) Efficient quantum algorithms for GHZ and W states: [https://arxiv.org/abs/1807.05572](https://arxiv.org/abs/1807.05572)
 - (2020) Three qubits can be entangled in two inequivalent ways: [https://arxiv.org/abs/quant-ph/0005115](https://arxiv.org/abs/quant-ph/0005115)
 - (2022) Deterministic construction of arbitrary W states with quadratically increasing number of two-qubit gates: [https://arxiv.org/abs/1606.09290](https://arxiv.org/abs/1606.09290)
+- (2021) Quantum unary approach to option pricing: [https://arxiv.org/abs/1912.01618](https://arxiv.org/abs/1912.01618)
+- (2023) Variational preparation of entangled states on quantum computers: [https://arxiv.org/abs/2306.17422](https://arxiv.org/abs/2306.17422)
 
 ----
 

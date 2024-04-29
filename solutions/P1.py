@@ -100,6 +100,7 @@ if 'vqi':
     CRY as CRY_original,
     CRZ as CRZ_original,
     CR as CR_original,
+    iSWAP as iSWAP_original,
     # trainable variational circuit modules
     #   .forward(q_machine:QMachine)
     VQC_BasicEntanglerTemplate,     # (num_layers:int=1, num_qubits:int=1, rotation:str='RX', initial=None, dtype:int=None)
@@ -124,6 +125,7 @@ if 'vqi':
     CRY = lambda wires, **kwargs: CRY_original(has_params=True, trainable=True, wires=wires, **kwargs)
     CRZ = lambda wires, **kwargs: CRZ_original(has_params=True, trainable=True, wires=wires, **kwargs)
     CR  = lambda wires, **kwargs: CR_original (has_params=True, trainable=True, wires=wires, **kwargs)   # 受控相位旋转
+    iSWAP = lambda wires, **kwargs: iSWAP_original(has_params=True, trainable=True, wires=wires, **kwargs)
 
     class CU3(Module):    # 受控任意角度旋转
       def __init__(self, wires:Wires):
@@ -376,6 +378,23 @@ class CCQC(Model):
     for entgl in self.entgl1: entgl.forward(vqm)
     for rot   in self.rot2:   rot(q_machine=vqm)
     for entgl in self.entgl2: entgl.forward(vqm)
+
+class AmplitudeDistributor(Model):
+
+  ''' https://arxiv.org/abs/1912.01618 '''
+
+  def __init__(self, n_qubits:int):
+    super().__init__(n_qubits)
+
+    self.iswap = ModuleList(iSWAP(wires=[i, i+1]) for i in range(n_qubits-1))
+
+  def __str__(self) -> str:
+    return super().__str__() + f'_Q={self.n_qubits}'
+
+  def forward(self):
+    vqm = self.vqm
+    paulix(vqm, wires=0)
+    for iswap in self.iswap: iswap(q_machine=vqm)
 
 
 class WState_VQC(Model):
@@ -673,7 +692,7 @@ def pretrain(n_qubits:int):
   DEBUG = True
 
   # TODO: tune these to find the optimal setting
-  method = 'WState_diogo_VQCy'
+  method = 'AmplitudeDistributor'
   depth = 1
   n_iter = 10000
   loss = 'l2'
@@ -711,6 +730,7 @@ def benchmark(n_qubits_cases:List[int], train_if_no_exist:bool=False):
   FIX_DEPTH_METHODS = [
     'WState_diogo',
     'WState_diogo_VQCx',
+    'WState_diogo_VQCy',
     'WState_diogo_VQC1',
     'WState_qiskit',
     'WState_qiskit_VQC0',
@@ -718,6 +738,7 @@ def benchmark(n_qubits_cases:List[int], train_if_no_exist:bool=False):
     'WState_qiskit_VQC2',
     'WState_qiskit_VQC3',
     'CCQC',
+    'AmplitudeDistributor',
   ]
   run_depth_group(-1, FIX_DEPTH_METHODS)
 
