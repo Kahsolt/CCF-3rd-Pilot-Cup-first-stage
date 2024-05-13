@@ -11,6 +11,8 @@ def testA():
 
 def testB():
   for phi in np.linspace(-2*pi, 2*pi, 360):
+    # NOTE: np.allclose is buggy when array contains -0.0 :(
+    # This check implementation is wrong...
     if np.allclose(RX(phi).v, (H * RZ(phi) * H).v):
       return False
   return True

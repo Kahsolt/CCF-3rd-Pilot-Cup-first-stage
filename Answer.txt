@@ -6,8 +6,8 @@
 5.D
 
 [multi]
-1.CD
+1.CD (=> BCD)
 2.ABD
 3.AD
-4.CD
+4.CD (=> ABCD?)
 5.BCD
