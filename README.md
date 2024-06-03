@@ -8,6 +8,7 @@
 队名: 我吃两个  
 得分: 90 (错了两个多选😭, 怎么会事呢??)
 
+决赛的 repo 在这里：[Adiabatic-Linear-Solver-QPanda](https://github.com/Kahsolt/Adiabatic-Linear-Solver-QPanda)
 
 ### install
 
